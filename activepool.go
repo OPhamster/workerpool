@@ -34,6 +34,25 @@ func (tp *ActivePool) AddWork(t Task) {
 	tp.taskList = append(tp.taskList, t)
 }
 
+// Cleanup closes the channels and resets the taskList
+// this ActivePool is no-longer to be used
+func (tp *ActivePool) Cleanup() {
+	close(tp.tRlt)
+	close(tp.tRgt)
+	tp.taskList = tp.taskList[:0]
+}
+
+// Reset resets the components for re-use
+func (tp *ActivePool) Reset() {
+	for len(tp.tRgt) > 0 {
+		<-tp.tRgt
+	}
+	for len(tp.tRlt) > 0 {
+		<-tp.tRlt
+	}
+	tp.taskList = tp.taskList[:0]
+}
+
 // DoWork does the actual heavy lifting and runs the functions
 // with simple pooling logic. It returns the number of
 // total results as well as the number of successes.
@@ -56,6 +75,7 @@ func (tp *ActivePool) DoWork() (int, int) {
 			// now are equal to the number of tasks
 			// then we can stop checking for work
 			if resultCount == totalTaskCount {
+				tp.Reset()
 				return resultCount, successCount
 			}
 			<-tp.tRgt
