@@ -2,6 +2,10 @@
 // go-routines.
 package workerpool
 
+import "time"
+
+var defaultTimeout time.Duration = 10 * time.Minute
+
 // TaskResult is the channel that holds the result of
 // the task
 type TaskResult chan error
@@ -21,12 +25,22 @@ type ActivePool struct {
 	poolSize int
 	tRlt     TaskResult
 	tRgt     TaskRegister
+	timeout  time.Duration
 }
 
 // InitializeActivePool initializes an ActivePoolStruct based on
 // the poolSize required and returns a pointer to it.
 func InitializeActivePool(pS int) *ActivePool {
-	return &ActivePool{poolSize: pS, tRlt: make(TaskResult, pS), tRgt: make(TaskRegister, pS)}
+	return &ActivePool{poolSize: pS, tRlt: make(TaskResult, pS), tRgt: make(TaskRegister, pS), timeout: defaultTimeout}
+}
+
+// SetTimeout sets a timeout duration for the Work - if the work
+// is not completed within the timeout duration - The work is aborted
+// and the current stats
+// (Total Number of Tasks completed till now, Total number of Successes till now)
+// are returned
+func (tp *ActivePool) SetTimeout(to time.Duration) {
+	tp.timeout = to
 }
 
 // AddWork adds Tasks to the task list that need to be completed
@@ -87,6 +101,10 @@ func (tp *ActivePool) DoWork() (int, int) {
 				go tp.taskList[i](tp.tRlt)
 				i++
 			}
+		case <-time.After(tp.timeout):
+			// flush and return current stats
+			tp.Reset()
+			return resultCount, successCount
 		}
 	}
 }

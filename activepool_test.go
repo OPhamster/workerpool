@@ -18,7 +18,7 @@ func TestInitializeActivePool(t *testing.T) {
 func TestActivePool_AddWork(t *testing.T) {
 	tp := InitializeActivePool(4)
 	for i := 0; i < 5; i++ {
-		wrk := func(tskRslt TaskResult){
+		wrk := func(tskRslt TaskResult) {
 			tskRslt <- nil
 		}
 		tp.AddWork(wrk)
@@ -42,6 +42,22 @@ func TestActivePool_DoWork(t *testing.T) {
 	}
 	resultCount, successCount := tp.DoWork()
 	if resultCount != 10 || successCount != 10 {
+		t.Error()
+	}
+}
+
+func TestActivePool_SetTimeout(t *testing.T) {
+	tp := InitializeActivePool(2)
+	tp.SetTimeout(time.Duration(1))
+	for i := 0; i < 10; i++ {
+		wrk := func(tskRslt TaskResult) {
+			time.Sleep(1 * time.Minute)
+			tskRslt <- nil
+		}
+		tp.AddWork(wrk)
+	}
+	resultCount, successCount := tp.DoWork()
+	if resultCount != 0 || successCount != 0 {
 		t.Error()
 	}
 }
